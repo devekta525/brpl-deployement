@@ -1,0 +1,41 @@
+const express = require('express');
+const router = express.Router();
+const { login, getStep1Leads, exportStep1Leads } = require('../controller/authController'); // Reuse existing login logic
+const {
+    adminLandingLogin, getAllRecords, getPaginatedRecords,
+    getAdminStats, getDashboardChartData, downloadUserInvoice,
+    getPayments, manualUserPaymentUpdate, getUnpaidUsers, createUser
+} = require('../controller/adminController');
+const authenticate = require('../middleware/authMiddleware');
+
+// Admin Login (using same auth logic, strictly for admin creds)
+router.post('/login', login);
+
+// Admin Landing Login (fixed credentials)
+router.post('/landing/login', adminLandingLogin);
+
+// Fetch All Data (Protected)
+router.get('/users', authenticate, getAllRecords);
+
+router.get('/stats', authenticate, getAdminStats);
+router.get('/records', authenticate, getPaginatedRecords);
+router.get('/unpaid-users', authenticate, getUnpaidUsers);
+router.post('/users', authenticate, createUser);
+router.get('/step1-leads', authenticate, getStep1Leads);
+router.get('/step1-leads/export', authenticate, exportStep1Leads);
+router.get('/charts', authenticate, getDashboardChartData);
+// Invoice Download
+router.get('/invoice/:userId', authenticate, downloadUserInvoice);
+
+// Coach & Referral
+const { createCoach, getReferralLink } = require('../controller/coachController');
+router.post('/coaches', authenticate, createCoach);
+router.get('/coaches/:id/referral-link', authenticate, getReferralLink);
+
+// Payments Tracking
+router.get('/payments', authenticate, getPayments);
+
+// Manual Payment Update
+router.patch('/users/:userId/payment', authenticate, manualUserPaymentUpdate);
+
+module.exports = router;
