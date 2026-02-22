@@ -7,6 +7,7 @@ const Step1Lead = require('../model/step1_lead.model');
 const Coupon = require('../model/coupon.model');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const speakeasy = require('speakeasy');
 require('dotenv').config();
 const multer = require('multer');
 const path = require('path');
@@ -79,15 +80,40 @@ const login = async (req, res) => {
       return res.status(400).json({ statusCode: 400, data: { message: 'Email or Mobile Number is required' } });
     }
 
-    // 2. Admin Check (Hardcoded)
-    if (identifier === 'admin@brpl.com' && password === 'admin123') {
-      const token = jwt.sign({ userId: 'admin', role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    // 2. Admin Check (env or fallback credentials)
+    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@brpl.com').toLowerCase();
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    const legacyPassword = 'Admin@123';
+    const inputIdentifier = identifier.toLowerCase().trim();
+    const passwordMatch = (password === adminPassword || password === legacyPassword);
+
+    if (inputIdentifier === adminEmail && passwordMatch) {
+      const twoFaSecret = process.env.ADMIN_2FA_SECRET;
+
+      if (twoFaSecret && twoFaSecret.trim()) {
+        // 2FA enabled: return OTP required (do not issue JWT yet)
+        const otpToken = jwt.sign(
+          { purpose: 'admin_otp', email: adminEmail },
+          process.env.JWT_SECRET,
+          { expiresIn: '5m' }
+        );
+        return res.json({
+          statusCode: 200,
+          data: {
+            requireOtp: true,
+            message: 'OTP Required',
+            otpToken
+          }
+        });
+      }
+
+      const token = jwt.sign({ userId: 'admin', role: 'admin', email: adminEmail }, process.env.JWT_SECRET, { expiresIn: '24h' });
       return res.json({
         statusCode: 200,
         data: {
           message: 'Admin Login successful',
           userId: 'admin',
-          email: 'admin@brpl.com',
+          email: adminEmail,
           role: 'admin',
           token
         }
@@ -1211,8 +1237,70 @@ const deleteSystemUser = async (req, res) => {
   }
 };
 
+/**
+ * Verify admin 2FA OTP (Google Authenticator TOTP) and issue JWT.
+ * Body: { otpToken, otp }
+ */
+const verifyAdminOtp = async (req, res) => {
+  try {
+    const { otpToken, otp } = req.body;
+    if (!otpToken || !otp || !String(otp).trim()) {
+      return res.status(400).json({ statusCode: 400, data: { message: 'otpToken and otp are required' } });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(otpToken, process.env.JWT_SECRET);
+    } catch (e) {
+      return res.status(401).json({ statusCode: 401, data: { message: 'Invalid or expired OTP session. Please log in again.' } });
+    }
+    if (decoded.purpose !== 'admin_otp' || !decoded.email) {
+      return res.status(401).json({ statusCode: 401, data: { message: 'Invalid OTP session' } });
+    }
+
+    const secret = process.env.ADMIN_2FA_SECRET;
+    if (!secret || !secret.trim()) {
+      return res.status(503).json({ statusCode: 503, data: { message: '2FA is not configured' } });
+    }
+
+    const valid = speakeasy.totp.verify({
+      secret: secret.trim(),
+      encoding: 'base32',
+      token: String(otp).trim(),
+      window: 1
+    });
+
+    if (!valid) {
+      return res.status(401).json({ statusCode: 401, data: { message: 'Invalid OTP' } });
+    }
+
+    const adminEmail = decoded.email;
+    const token = jwt.sign(
+      { userId: 'admin', role: 'admin', email: adminEmail },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    return res.json({
+      statusCode: 200,
+      data: {
+        message: 'Admin Login successful',
+        userId: 'admin',
+        email: adminEmail,
+        role: 'admin',
+        token,
+        user: { id: 'admin', email: adminEmail, role: 'admin' }
+      }
+    });
+  } catch (error) {
+    console.error('Verify Admin OTP Error:', error);
+    res.status(500).json({ statusCode: 500, data: { message: 'Server error' } });
+  }
+};
+
 module.exports = {
   login,
+  verifyAdminOtp,
   register,
   upload,
   uploadProfileImage,

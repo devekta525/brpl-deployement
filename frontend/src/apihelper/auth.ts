@@ -6,6 +6,12 @@ export const login = async (data: any) => {
     return response.data;
 };
 
+/** Verify admin 2FA OTP (Google Authenticator) and get JWT. */
+export const verifyAdminOtp = async (otpToken: string, otp: string) => {
+    const response = await api.post(ENDPOINTS.ADMIN.VERIFY_OTP, { otpToken, otp });
+    return response.data;
+};
+
 export const register = async (data: any) => {
     const response = await api.post(ENDPOINTS.AUTH.REGISTER, data);
     return response.data;

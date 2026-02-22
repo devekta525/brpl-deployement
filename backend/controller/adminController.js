@@ -26,6 +26,23 @@ const adminLandingLogin = async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
+        const twoFaSecret = process.env.ADMIN_2FA_SECRET;
+        if (twoFaSecret && twoFaSecret.trim()) {
+            const otpToken = jwt.sign(
+                { purpose: 'admin_otp', email: adminEmail },
+                process.env.JWT_SECRET,
+                { expiresIn: '5m' }
+            );
+            return res.json({
+                statusCode: 200,
+                data: {
+                    requireOtp: true,
+                    message: 'OTP Required',
+                    otpToken
+                }
+            });
+        }
+
         const token = jwt.sign(
             { userId: 'admin', role: 'admin', email: adminEmail },
             process.env.JWT_SECRET,

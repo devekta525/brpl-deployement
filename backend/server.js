@@ -22,7 +22,11 @@ const partnerRoutes = require("./routes/partnerRoutes");
 
 const path = require("path");
 const app = express();
-const port = 5000;
+const port = process.env.PORT || 5000;
+
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./swagger-output.json');
+
 // const dbURI = "mongodb://localhost:27017/videoPortal";
 const dbURI = process.env.MONGO_URL || "mongodb+srv://brpl-dev-write:YnJwbC1kZXYtd3JpdGU@brpl-dev.nj1umik.mongodb.net/brpl";
 
@@ -63,6 +67,8 @@ connectDB();
 app.get("/", (req, res) => {
   res.send("app start");
 });
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 
 app.use("/auth", authRoutes);
