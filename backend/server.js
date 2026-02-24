@@ -68,19 +68,21 @@ app.get("/", (req, res) => {
   res.send("app start");
 });
 
+// SEO: sitemap and robots (before other routes so paths are exact)
+app.use("/", require("./routes/sitemapRoute"));
+
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 
 app.use("/auth", authRoutes);
 app.use("/api/auth", authRoutes); // Alias for consistency
 app.use("/api/video", videoRoutes);
-app.use("/api", userRoutes);
+app.use("/api/blog", require("./routes/blogRoute"));
+app.use("/api/news", require("./routes/newsRoute"));
 app.use("/api/coupons", couponRoutes);
 app.use("/api/locations", locationRoute);
 app.use("/api/contact", contactRoute);
 app.use("/api/payment", paymentRoute);
-app.use("/admin", adminRoutes);
-app.use("/api/admin", adminRoutes); // Alias for consistency
 app.use("/api/events", eventRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/ambassadors", ambassadorRoutes);
@@ -94,6 +96,9 @@ app.use("/api/cms/site-settings", require("./routes/siteSettingsRoute"));
 app.use("/api/cms/legal", require("./routes/legalRoute"));
 app.use("/api/cms", require("./routes/cmsRoute"));
 app.use("/api", require("./routes/seoRoute"));
+app.use("/api", userRoutes);
+app.use("/admin", adminRoutes);
+app.use("/api/admin", adminRoutes); // Alias for consistency
 
 app.listen(port, () => {
   console.log(`server is running on port ${port}`);

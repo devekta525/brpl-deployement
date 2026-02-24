@@ -18,7 +18,12 @@ const siteSettingsSchema = new mongoose.Schema({
     bannerImage: { type: String, default: '' },
     bannerTitles: { type: mongoose.Schema.Types.Mixed, default: {} },
     teamsBannerImage: { type: String, default: '' },
-    teamsVideoUrl: { type: String, default: '' }
+    teamsVideoUrl: { type: String, default: '' },
+    admin2FASecret: { type: String, default: '' },
+    admin2FAVerified: { type: Boolean, default: false },
+    admin2FAEnabled: { type: Boolean, default: false },
+    /** Google Analytics / Search Console: script tags to inject in <head> (paste from GSC/GA) */
+    customHeadScripts: { type: String, default: '' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('SiteSettings', siteSettingsSchema);

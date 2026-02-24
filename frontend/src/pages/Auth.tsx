@@ -67,6 +67,7 @@ const Auth = ({ forceRegister }: AuthProps) => {
   const [requireAdminOtp, setRequireAdminOtp] = useState(false);
   const [adminOtpToken, setAdminOtpToken] = useState("");
   const [adminOtpInput, setAdminOtpInput] = useState("");
+  const [adminQrCodeUrl, setAdminQrCodeUrl] = useState<string | null>(null);
   const [isVerifyingAdminOtp, setIsVerifyingAdminOtp] = useState(false);
 
 
@@ -309,6 +310,13 @@ const Auth = ({ forceRegister }: AuthProps) => {
 
   const handleStep2Submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Meta Pixel: InitiateCheckout — fire once on button click, before payment completes
+    import('react-facebook-pixel').then((x) => x.default.track('InitiateCheckout', {
+      value: 1499,
+      currency: 'INR',
+      content_name: 'Registration Fee',
+      content_type: 'product',
+    }));
     // Razorpay Payment Logic
     setIsPaymentProcessing(true);
     try {
@@ -512,10 +520,15 @@ const Auth = ({ forceRegister }: AuthProps) => {
           setRequireAdminOtp(true);
           setAdminOtpToken(data.otpToken);
           setAdminOtpInput("");
+          if (data.qrCodeUrl) {
+            setAdminQrCodeUrl(data.qrCodeUrl);
+          } else {
+            setAdminQrCodeUrl(null);
+          }
           setIsLoading(false);
           toast({
-            title: "Two-Factor Authentication",
-            description: "Enter the 6-digit code from your authenticator app.",
+            title: data.qrCodeUrl ? "MFA Setup Required" : "Two-Factor Authentication",
+            description: data.qrCodeUrl ? "Enrolling device. Scan the QR code." : "Enter the 6-digit code from your authenticator app.",
           });
           return;
         }
@@ -566,7 +579,7 @@ const Auth = ({ forceRegister }: AuthProps) => {
   };
 
   const handleVerifyAdminOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+    debugger
     if (!adminOtpToken || adminOtpInput.length !== 6) {
       toast({ variant: "destructive", title: "Invalid OTP", description: "Enter the 6-digit code from your authenticator app." });
       return;
@@ -595,8 +608,6 @@ const Auth = ({ forceRegister }: AuthProps) => {
         title: "Verification Failed",
         description: err.response?.data?.data?.message || err.response?.data?.message || "Invalid OTP. Please try again.",
       });
-    } finally {
-      setIsVerifyingAdminOtp(false);
     }
   };
 
@@ -1181,15 +1192,22 @@ const Auth = ({ forceRegister }: AuthProps) => {
       </Dialog>
 
       {/* Admin 2FA (Google Authenticator) Modal */}
-      <Dialog open={requireAdminOtp} onOpenChange={(open) => { if (!open) { setRequireAdminOtp(false); setAdminOtpToken(""); setAdminOtpInput(""); } }}>
+      <Dialog open={requireAdminOtp} onOpenChange={(open) => { if (!open) { setRequireAdminOtp(false); setAdminOtpToken(""); setAdminOtpInput(""); setAdminQrCodeUrl(null); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Two-Factor Authentication</DialogTitle>
+            <DialogTitle>{adminQrCodeUrl ? "Setup Two-Factor Authentication" : "Two-Factor Authentication"}</DialogTitle>
             <DialogDescription>
-              Enter the 6-digit code from your Google Authenticator app.
+              {adminQrCodeUrl
+                ? "Scan the QR code below using your Google Authenticator app, then enter the generated 6-digit code to complete setup."
+                : "Enter the 6-digit code from your Google Authenticator app."}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleVerifyAdminOtp} className="space-y-4 py-4">
+          <div className="space-y-4 py-4">
+            {adminQrCodeUrl && (
+              <div className="flex justify-center mb-4">
+                <img src={adminQrCodeUrl} alt="QR Code for Google Authenticator" className="w-48 h-48 border rounded-lg shadow-sm bg-white p-2" loading="lazy" decoding="async" />
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Authenticator code</Label>
               <div className="flex justify-center">
@@ -1209,10 +1227,10 @@ const Auth = ({ forceRegister }: AuthProps) => {
                 </InputOTP>
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={isVerifyingAdminOtp || adminOtpInput.length !== 6}>
+            <Button onClick={handleVerifyAdminOtp} className="w-full" disabled={isVerifyingAdminOtp || adminOtpInput.length !== 6}>
               {isVerifyingAdminOtp ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify & Sign in"}
             </Button>
-          </form>
+          </div>
         </DialogContent>
       </Dialog>
     </div >

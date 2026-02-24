@@ -192,6 +192,8 @@ const AdminWhoWeAre = () => {
                                                 src={preview || getImageUrl(existingImage) || ""}
                                                 alt="Preview"
                                                 className="w-full h-full object-cover"
+                                                loading="lazy"
+                                                decoding="async"
                                             />
                                             {preview && (
                                                 <button
