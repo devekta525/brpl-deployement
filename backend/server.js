@@ -31,7 +31,11 @@ const swaggerDocument = require('./swagger-output.json');
 const dbURI = process.env.MONGO_URL || "mongodb+srv://brpl-dev-write:YnJwbC1kZXYtd3JpdGU@brpl-dev.nj1umik.mongodb.net/brpl";
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // app.use(expressWinston.logger({
@@ -96,6 +100,7 @@ app.use("/api/cms/site-settings", require("./routes/siteSettingsRoute"));
 app.use("/api/cms/legal", require("./routes/legalRoute"));
 app.use("/api/cms", require("./routes/cmsRoute"));
 app.use("/api", require("./routes/seoRoute"));
+app.use("/api/webhooks", require("./routes/webhookRoute"));
 app.use("/api", userRoutes);
 app.use("/admin", adminRoutes);
 app.use("/api/admin", adminRoutes); // Alias for consistency

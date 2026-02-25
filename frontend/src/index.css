@@ -388,3 +388,20 @@
   animation: border-move 3s linear infinite;
   background-size: 200% 100%;
 }
+
+/* Broadcasting section: highlighted title with subtle glow animation */
+@keyframes broadcast-title-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(251, 191, 36, 0.7);
+    opacity: 0.95;
+  }
+}
+
+.animate-broadcast-title {
+  animation: broadcast-title-glow 2.5s ease-in-out infinite;
+}

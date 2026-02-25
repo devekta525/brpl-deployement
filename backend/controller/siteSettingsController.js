@@ -64,7 +64,7 @@ exports.getSettings = async (req, res) => {
 // PUT (admin) - update settings
 exports.updateSettings = async (req, res) => {
     try {
-        const { contactAddress, contactPhone, contactPhoneSecondary, contactEmail, whatsappNumber, mapEmbedUrl, socialLinks, bannerImage, bannerTitles, teamsBannerImage, teamsVideoUrl, customHeadScripts } = req.body;
+        const { contactAddress, contactPhone, contactPhoneSecondary, contactEmail, whatsappNumber, mapEmbedUrl, socialLinks, bannerImage, bannerTitles, teamsBannerImage, teamsVideoUrl, customHeadScripts, customBodyScripts } = req.body;
         const update = {};
         if (contactAddress !== undefined) update.contactAddress = contactAddress;
         if (contactPhone !== undefined) update.contactPhone = contactPhone;
@@ -90,6 +90,7 @@ exports.updateSettings = async (req, res) => {
             }
         }
         if (customHeadScripts !== undefined) update.customHeadScripts = String(customHeadScripts ?? '');
+        if (customBodyScripts !== undefined) update.customBodyScripts = String(customBodyScripts ?? '');
         let settings = await SiteSettings.findOneAndUpdate(
             { key: 'main' },
             { $set: update },

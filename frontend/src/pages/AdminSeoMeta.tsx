@@ -45,7 +45,8 @@ export default function AdminSeoMeta() {
         keywords: "",
         ogTitle: "",
         ogDescription: "",
-        ogImage: ""
+        ogImage: "",
+        customBodyScripts: ""
     });
 
     const [savedMetas, setSavedMetas] = useState<any[]>([]);
@@ -92,7 +93,8 @@ export default function AdminSeoMeta() {
                 keywords: "",
                 ogTitle: "",
                 ogDescription: "",
-                ogImage: ""
+                ogImage: "",
+                customBodyScripts: ""
             });
             return;
         }
@@ -106,7 +108,8 @@ export default function AdminSeoMeta() {
                 keywords: found.keywords || "",
                 ogTitle: found.ogTitle || "",
                 ogDescription: found.ogDescription || "",
-                ogImage: found.ogImage || ""
+                ogImage: found.ogImage || "",
+                customBodyScripts: found.customBodyScripts || ""
             });
         } else {
             setFormData({
@@ -116,7 +119,8 @@ export default function AdminSeoMeta() {
                 keywords: "",
                 ogTitle: "",
                 ogDescription: "",
-                ogImage: ""
+                ogImage: "",
+                customBodyScripts: ""
             });
         }
     };
@@ -344,6 +348,20 @@ export default function AdminSeoMeta() {
                                         onChange={handleChange}
                                     />
                                     <p className="text-xs text-muted-foreground">Image shown when the page is shared. Use absolute URL. Recommended 1200×630 px.</p>
+                                </div>
+                            </div>
+
+                            <div className="border-t pt-6 mt-6 space-y-4">
+                                <h3 className="font-bold text-foreground">Per-page Script Tags</h3>
+                                <div className="space-y-2">
+                                    <Label htmlFor="customBodyScripts" className="font-medium">Bottom Script code (&lt;body&gt;)</Label>
+                                    <CodeEditorWithHighlight
+                                        id="customBodyScripts"
+                                        value={formData.customBodyScripts}
+                                        onChange={(val) => setFormData(prev => ({ ...prev, customBodyScripts: val }))}
+                                        placeholder="Paste script tags specifically for this page (e.g. conversion tracking) to inject at the very bottom of the page."
+                                        rows={6}
+                                    />
                                 </div>
                             </div>
 

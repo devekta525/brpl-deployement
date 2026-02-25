@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getSeoMetaByPath } from '@/apihelper/seo';
 import { buildBreadcrumbSchema } from '@/components/SchemaMarkup';
 
@@ -22,6 +22,8 @@ const SEO = ({ title, description, keywords, image, url, breadcrumbCurrentName }
     const [ogTitle, setOgTitle] = useState<string | null>(null);
     const [ogDescription, setOgDescription] = useState<string | null>(null);
     const [ogImage, setOgImage] = useState<string | null>(null);
+    const [customBodyScripts, setCustomBodyScripts] = useState<string>("");
+    const injectedBodyRef = useRef<string>("");
 
     useEffect(() => {
         const fetchSEO = async () => {
@@ -36,6 +38,7 @@ const SEO = ({ title, description, keywords, image, url, breadcrumbCurrentName }
                     setOgTitle(data.ogTitle?.trim() || null);
                     setOgDescription(data.ogDescription?.trim() || null);
                     setOgImage(data.ogImage?.trim() || null);
+                    setCustomBodyScripts(data.customBodyScripts?.trim() || "");
                 } else {
                     setDynamicTitle(`${title} | ${siteTitle}`);
                     setDynamicDesc(description);
@@ -43,6 +46,7 @@ const SEO = ({ title, description, keywords, image, url, breadcrumbCurrentName }
                     setOgTitle(null);
                     setOgDescription(null);
                     setOgImage(null);
+                    setCustomBodyScripts("");
                 }
             } catch {
                 setDynamicTitle(`${title} | ${siteTitle}`);
@@ -51,11 +55,52 @@ const SEO = ({ title, description, keywords, image, url, breadcrumbCurrentName }
                 setOgTitle(null);
                 setOgDescription(null);
                 setOgImage(null);
+                setCustomBodyScripts("");
             }
         };
 
         fetchSEO();
     }, [title, description, keywords]);
+
+    useEffect(() => {
+        const raw = customBodyScripts;
+        const DATA_ATTR = "data-custom-body-script";
+
+        const existing = document.body.querySelectorAll(`script[${DATA_ATTR}="true"]`);
+        existing.forEach((el) => el.remove());
+        injectedBodyRef.current = "";
+
+        if (!raw) return;
+
+        if (injectedBodyRef.current === raw) return;
+        injectedBodyRef.current = raw;
+
+        const container = document.createElement("div");
+        container.innerHTML = raw;
+        const scriptNodes = container.querySelectorAll("script");
+        const added: HTMLScriptElement[] = [];
+
+        scriptNodes.forEach((oldScript) => {
+            const script = document.createElement("script");
+            script.setAttribute(DATA_ATTR, "true");
+            if (oldScript.src) {
+                script.src = oldScript.src;
+                if (oldScript.async) script.async = true;
+                if (oldScript.defer) script.defer = true;
+            } else {
+                script.textContent = oldScript.textContent || "";
+            }
+            document.body.appendChild(script);
+            added.push(script);
+        });
+
+        return () => {
+            added.forEach((el) => {
+                if (el.parentNode) el.parentNode.removeChild(el);
+            });
+            injectedBodyRef.current = "";
+        };
+    }, [customBodyScripts]);
 
     const defaultImage = typeof window !== 'undefined' ? `${window.location.origin}/logo.png` : '/logo.png';
     const currentUrl = url || (typeof window !== 'undefined' ? window.location.href : '');

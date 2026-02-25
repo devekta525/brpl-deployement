@@ -23,7 +23,9 @@ const siteSettingsSchema = new mongoose.Schema({
     admin2FAVerified: { type: Boolean, default: false },
     admin2FAEnabled: { type: Boolean, default: false },
     /** Google Analytics / Search Console: script tags to inject in <head> (paste from GSC/GA) */
-    customHeadScripts: { type: String, default: '' }
+    customHeadScripts: { type: String, default: '' },
+    /** Global script tags to inject just before closing </body> tag */
+    customBodyScripts: { type: String, default: '' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('SiteSettings', siteSettingsSchema);

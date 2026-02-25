@@ -99,7 +99,7 @@ const Dashboard = () => {
           try {
             await verifyLandingPayment({
               ...response,
-              userId: userProfile._id,
+              userId: userProfile.userId,
               amount: 1499
             });
 

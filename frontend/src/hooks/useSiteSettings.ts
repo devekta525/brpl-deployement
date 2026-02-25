@@ -21,6 +21,8 @@ export interface SiteSettings {
     teamsVideoUrl: string;
     /** Google Analytics / Search Console scripts to inject in <head> */
     customHeadScripts: string;
+    /** Global scripts to inject at the bottom of <body> */
+    customBodyScripts: string;
 }
 
 const defaultSettings: SiteSettings = {
@@ -40,6 +42,7 @@ const defaultSettings: SiteSettings = {
     teamsBannerImage: "",
     teamsVideoUrl: "https://brpl-public-uploads.s3.ap-south-1.amazonaws.com/teams-video.mp4",
     customHeadScripts: "",
+    customBodyScripts: "",
 };
 
 function isLikelyS3Key(image: string): boolean {
@@ -89,6 +92,7 @@ export function useSiteSettings() {
                     ? String(data.teamsVideoUrl).trim()
                     : defaultSettings.teamsVideoUrl,
                 customHeadScripts: data.customHeadScripts != null ? String(data.customHeadScripts) : defaultSettings.customHeadScripts,
+                customBodyScripts: data.customBodyScripts != null ? String(data.customBodyScripts) : defaultSettings.customBodyScripts,
             });
         } catch {
             setSettings(defaultSettings);
