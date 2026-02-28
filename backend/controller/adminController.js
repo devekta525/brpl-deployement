@@ -23,12 +23,25 @@ const adminLandingLogin = async (req, res) => {
 
         const inputEmail = String(email).toLowerCase().trim();
 
-        if (inputEmail !== adminEmail || (password !== adminPassword && password !== legacyPassword)) {
+        if (inputEmail !== adminEmail) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
         let settings = await SiteSettings.findOne({ key: 'main' });
         if (!settings) settings = await SiteSettings.create({ key: 'main' });
+
+        let isAdminPasswordMatch = false;
+        // Check if custom hashed password exists
+        if (settings.adminPasswordHash) {
+            isAdminPasswordMatch = await bcrypt.compare(password, settings.adminPasswordHash);
+        } else {
+            // Fallback to env passwords only if no custom hash exists
+            isAdminPasswordMatch = (password === adminPassword || password === legacyPassword);
+        }
+
+        if (!isAdminPasswordMatch) {
+            return res.status(401).json({ message: 'Invalid credentials' });
+        }
 
         const twoFaSecret = settings.admin2FASecret;
         if (settings.admin2FAEnabled && twoFaSecret && twoFaSecret.trim()) {
@@ -112,14 +125,20 @@ const getPaginatedRecords = async (req, res) => {
         const search = (req.query.search || '').toString().trim();
         const startDate = req.query.startDate;
         const endDate = req.query.endDate;
+        const source = (req.query.source || '').toString().trim().toLowerCase();
 
         const Model = type === 'coaches' ? Coach : type === 'influencers' ? Influencer : User;
 
         const filter = {};
 
-        // Apply isFromLandingPage for all user-related types
+        // Apply isFromLandingPage for all user-related types based on source filter
         if (['users', 'paid', 'unpaid'].includes(type)) {
-            filter.isFromLandingPage = true;
+            if (source === 'landing') {
+                filter.isFromLandingPage = true;
+            } else if (source === 'website') {
+                filter.isFromLandingPage = { $ne: true };
+            }
+            // If source is 'all' or empty, no filter is applied for isFromLandingPage
         }
 
         if (search) {
@@ -551,12 +570,18 @@ const getUnpaidUsers = async (req, res) => {
         const search = (req.query.search || '').toString().trim();
         const startDate = req.query.startDate;
         const endDate = req.query.endDate;
+        const source = (req.query.source || '').toString().trim().toLowerCase();
 
-        // Base requirements: Landing Page + Unpaid
+        // Base requirements: Unpaid
         const baseFilter = {
-            // isFromLandingPage: true, // Removed to match export logic
             isPaid: false
         };
+
+        if (source === 'landing') {
+            baseFilter.isFromLandingPage = true;
+        } else if (source === 'website') {
+            baseFilter.isFromLandingPage = { $ne: true };
+        }
 
         // Payment check: 0 or null/undefined
         const paymentOr = [

@@ -18,6 +18,7 @@ import { getProfile } from "@/apihelper/auth";
 import { AlertCircle, CreditCard, Lock as LockIcon, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { createLandingOrder, verifyLandingPayment } from "@/apihelper/payment";
+import { loadRazorpay } from "@/utils/loadRazorpay";
 import { useTranslation } from "react-i18next";
 
 const Dashboard = () => {
@@ -86,7 +87,7 @@ const Dashboard = () => {
     }));
     setIsProcessingPayment(true);
     try {
-      const order = await createLandingOrder(1499);
+      const [order, Razorpay] = await Promise.all([createLandingOrder(1499), loadRazorpay()]);
 
       const options: any = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_live_RsBsR05m5SGbtT",
@@ -98,9 +99,12 @@ const Dashboard = () => {
         handler: async (response: any) => {
           try {
             await verifyLandingPayment({
-              ...response,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
               userId: userProfile.userId,
-              amount: 1499
+              amount: 1499,
+              isFromLandingPage: false, // Website payment (not landing page)
             });
 
             toast({
@@ -133,7 +137,7 @@ const Dashboard = () => {
         }
       };
 
-      const rzp = new (window as any).Razorpay(options);
+      const rzp = new Razorpay(options);
       rzp.open();
     } catch (error: any) {
       console.error("Payment initiation failed", error);

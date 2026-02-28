@@ -1,4 +1,5 @@
 import ReactBarcode from 'react-barcode';
+import { useState, useEffect } from 'react';
 
 interface TrialPassProps {
     user?: any;
@@ -10,76 +11,111 @@ const TrialPass = ({ user }: TrialPassProps) => {
     const profileImage = user?.profileImage || '/assets/hero-player.png'; // Will use a default if available, or fallback
     const barcodeValue = String(user?.userId || user?._id || '1234567890123');
 
+    const [imgSrc, setImgSrc] = useState<string>(profileImage);
+
+    useEffect(() => {
+        let isMounted = true;
+        setImgSrc(profileImage);
+
+        if (!profileImage || profileImage.startsWith('data:') || profileImage.startsWith('/')) {
+            return; // No need to fetch local or base64 images
+        }
+
+        const fetchAndSetImage = async () => {
+            const isLocal = !profileImage || profileImage.startsWith('data:') || profileImage.startsWith('/');
+            if (isLocal) return;
+
+            // Direct fetch attempt (often works if S3 bucket has proper CORS)
+            try {
+                const directUrl = profileImage + (profileImage.includes('?') ? '&' : '?') + 't=' + Date.now();
+                const res = await fetch(directUrl, { mode: 'cors' });
+                if (!res.ok) throw new Error("Direct fetch failed");
+                const blob = await res.blob();
+
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    if (isMounted && reader.result) {
+                        setImgSrc(reader.result as string);
+                    }
+                };
+                reader.readAsDataURL(blob);
+                return; // Success
+            } catch (err) {
+                console.warn("Direct fetch failed, trying proxy...", err);
+            }
+
+            // Proxy fallback
+            try {
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(profileImage)}`;
+                const res = await fetch(proxyUrl);
+                if (!res.ok) throw new Error("Proxy fetch failed");
+                const blob = await res.blob();
+
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    if (isMounted && reader.result) {
+                        setImgSrc(reader.result as string);
+                    }
+                };
+                reader.readAsDataURL(blob);
+            } catch (err) {
+                console.warn("Proxy also failed for TrialPass image:", err);
+                // Do NOT fallback to local avatar. The URL might still render fine in normal img tag
+                // If html-to-image fails later, it's unavoidable without working CORS.
+            }
+        };
+
+        fetchAndSetImage();
+
+        return () => { isMounted = false; };
+    }, [profileImage]);
+
     return (
-        <div className="relative w-[400px] h-[510px] bg-white rounded-[24px] overflow-hidden shadow-[0_10px_40px_rgba(0,0,0,0.15)] select-none shrink-0 mx-auto"
+        <div id="brpl-trial-pass" className="relative w-[400px] h-[510px] shadow-[0_10px_40px_rgba(0,0,0,0.15)] select-none shrink-0 mx-auto overflow-hidden p-0 bg-white"
             style={{
-                border: '4px solid #2f3e56', // The dark blue/gray border of the card
+                backgroundImage: 'url(/assets/trail-pass-bg.png)',
+                backgroundSize: '100% 100%',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
                 fontFamily: '"Inter", sans-serif',
             }}
         >
-            {/* Background SVG Graphics */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 510" preserveAspectRatio="none">
-                {/* Left side Saffron swooshes */}
-                <path d="M 0,110 C 130,120 180,200 150,350 L 0,350 Z" fill="#e28639" />
-                <path d="M 0,140 C 120,150 160,210 120,330 L 0,330 Z" fill="#cd671b" />
-
-                {/* Right side Grey swooshes */}
-                <path d="M 400,210 C 270,190 220,300 240,420 L 400,420 Z" fill="#e4e4e4" />
-                <path d="M 400,240 C 290,220 260,310 270,400 L 400,400 Z" fill="#cfcfcf" />
-
-                {/* Bottom arcs */}
-                <path d="M 120,510 Q 200,470 280,510" fill="none" stroke="#d26e25" strokeWidth="2.5" />
-                <path d="M 150,510 Q 200,485 250,510" fill="none" stroke="#253245" strokeWidth="3.5" />
-            </svg>
-
-            {/* Top Cutout */}
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-[52px] h-[26px] bg-[#d16b23] rounded-b-full z-10" />
-
-            <div className="relative z-10 w-full h-full flex flex-col pt-[26px] px-6 pb-4">
-                {/* Header */}
-                <div className="w-full flex justify-between items-start">
-                    <img src="/logo.png" alt="BRPL Logo" className="w-[105px] object-contain ml-0.5" loading="lazy" decoding="async" />
-                    <div className="flex flex-col items-end mr-0.5" style={{ fontFamily: '"Poppins", sans-serif' }}>
-                        <span className="text-[#ce661a] font-bold text-[13px] tracking-wide">BRPL Trial Pass</span>
-                        <span className="text-[#19273f] font-black text-[3.4rem] leading-[0.95] tracking-tighter mt-0">2026</span>
-                        <span className="text-gray-900 text-[10px] font-bold tracking-widest mt-1">Vallid Till : 31/07/2026</span>
-                    </div>
-                </div>
+            <div className="relative z-10 w-full h-full flex flex-col pt-[108px] px-[30px] pb-[16px]">
 
                 {/* Photo Area */}
-                <div className="mt-[22px] flex-1 w-full flex flex-col items-center justify-start">
-                    <div className="w-[240px] h-[240px] rounded-[1.25rem] overflow-hidden shadow-md bg-[#556073]" style={{ border: '4px solid #2f3e56' }}>
-                        {profileImage ? (
-                            <img src={profileImage} alt={fullName} className="w-full h-full object-cover object-top" loading="lazy" decoding="async" />
+                <div className="w-full flex-none flex flex-col items-center justify-start mt-[10px]">
+                    <div className="w-[220px] h-[220px] rounded-[22px] border-[3px] border-[#24324a] overflow-hidden bg-[#5c667a] shadow-sm">
+                        {user?.profileImage ? (
+                            <img
+                                src={imgSrc}
+                                alt={fullName}
+                                className="w-full h-full object-cover object-center"
+                            />
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-[#556073] text-white text-[4rem] font-black">
-                                {fullName.charAt(0)}
+                            <div className="w-full h-full flex items-center justify-center text-white text-center text-[18px] font-medium p-4 leading-snug">
+                                Upload Your <br /> Image
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* User Info */}
-                <div className="mt-[-8px] text-center pb-2">
-                    <h2 className="text-[#000] text-[28px] font-bold tracking-tight mb-[10px] leading-none" style={{ fontFamily: '"Poppins", sans-serif' }}>
+                {/* User Info Wrapper */}
+                <div className="mt-2 flex flex-col items-center justify-center text-center gap-1">
+                    <h2 className="text-[#000] text-[26px] font-semibold tracking-wide mb-1 leading-none" style={{ fontFamily: '"Poppins", sans-serif' }}>
                         {fullName}
                     </h2>
-                    <div className="flex justify-center mix-blend-multiply opacity-95 mx-auto px-4 scale-x-105">
+
+                    <div className="flex justify-center mx-auto mb-[32px] w-[70%]">
                         <ReactBarcode
                             value={barcodeValue}
-                            width={1.6}
-                            height={45}
+                            width={1.3}
+                            height={52}
                             displayValue={false}
                             background="transparent"
                             lineColor="#000000"
                             margin={0}
                         />
                     </div>
-                </div>
-
-                {/* Footer */}
-                <div className="mt-auto text-center font-medium italic text-[#1c2c44] text-[11px] tracking-wide pb-1">
-                    Bharat ki League, Bhartiyo ka Sapna.
                 </div>
             </div>
         </div>
